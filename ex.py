@@ -8,6 +8,38 @@ WS_URL = "wss://hkt25.codeontime.fr/ws/simulation"
 TEAM_CODE = "K98ML5"
 HEADERS = {"X-Team-Code": TEAM_CODE}
 
+Speed={"ULTRA_LOW":0.2,"SLOW":0.5,"NORMAL":1,"FAST":2,"TURBO":5,"ULTRA":10,"INSTANT":50,"MAXIMUM":100}
+
+def achat(quantity,symbol):
+    order={"symbol":symbol,"action": "BUY","quantity": quantity}
+    requests.post(f"{BASE_URL}/api/order", json=order, headers=HEADERS)
+
+
+def vente(quantity,symbol):
+    order={"symbol":symbol,"action": "SELL","quantity": quantity}
+    requests.post(f"{BASE_URL}/api/order", json=order, headers=HEADERS)
+
+def startSimu():
+    requests.post(f"{BASE_URL}/api/simulation/start", headers=HEADERS)
+
+def stopSimu():
+    requests.post(f"{BASE_URL}/api/simulation/pause", headers=HEADERS)
+
+def arretSimu():
+    requests.post(f"{BASE_URL}/api/simulation/stop", headers=HEADERS)
+
+def getSpeed():
+    requests.get(f"{BASE_URL}/api/simulation/speed", headers=HEADERS)
+
+def getPreset():
+    requests.get(f"{BASE_URL}/api/simulation/presets")
+
+def setSpeed(speed):
+    requests.put(f"{BASE_URL}/api/simulation/speed?multiplier={Speed[speed]}",headers=HEADERS)
+
+
+
+
 def on_message(ws, message):
     data = json.loads(message)
     if data['type'] == 'TICK':
@@ -35,5 +67,9 @@ threading.Thread(target=ws.run_forever).start()
 requests.post(f"{BASE_URL}/api/simulation/start", headers=HEADERS)
 
 # Place Order
-order = {"symbol": "MERI", "action": "BUY", "quantity": 10}
+order = achat("MERI",50)
 requests.post(f"{BASE_URL}/api/order", json=order, headers=HEADERS)
+
+
+
+
