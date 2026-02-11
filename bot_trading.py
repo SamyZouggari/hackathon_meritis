@@ -13,18 +13,25 @@ class TradingAgent():
         self.cash = initial_cash
         self.positions = {'MERI': 0, 'TIS': 0}
         self.current_step = 0
-        self.marginDeposit=0
 
     def get_state(self):
         meri_data = self.market_data_MERI.iloc[self.current_step]
         tis_data = self.market_data_TIS.iloc[self.current_step]
+        def ma(asset, window):
+            data = self.market_data_MERI if asset == 'MERI' else self.market_data_TIS
+            if self.current_step < window:
+                return float(data['close'].iloc[self.current_step])  # ⬅️ force scalar
+            else:
+                return float(data['close'].iloc[self.current_step - window + 1:self.current_step + 1].mean())  # ⬅️ force scalar
 
         obs = np.array([
             meri_data['open'], meri_data['high'], meri_data['low'], meri_data['close'], meri_data['volume'],
             tis_data['open'], tis_data['high'], tis_data['low'], tis_data['close'], tis_data['volume'],
             self.cash / 100000,  # Normalize cash
             self.positions['MERI'],
-            self.positions['TIS']
+            self.positions['TIS'],
+            ma('MERI', 5), ma('MERI', 10), ma('MERI', 20), 
+            ma('TIS', 5), ma('TIS', 10), ma('TIS', 20)
         ])
         return obs
 
@@ -38,7 +45,6 @@ class TradingAgent():
         self.trade(nb_MERI, "MERI")
         self.trade(nb_TIS, "TIS")
 
-
     def trade(self, request, asset):
 
         if asset == "MERI":
@@ -47,47 +53,15 @@ class TradingAgent():
             current_price = self.market_data_TIS.iloc[self.current_step]['close']
         
         if request < 0:  # Sell
-            qty_sell = min(-request, self.positions[asset])
-            qty_sell=max(qty_sell,0)
+            qty_sell = min(-request, self.positions[asset])  # Can't sell more than we have
+            self.positions[asset] -= qty_sell
             self.cash += qty_sell * current_price
-            self.positions[asset] += request
-            if self.positions[asset]<0:
-                self.cash-=abs(self.positions[asset])*current_price*0.5
-                self.marginDeposit+=abs(self.positions[asset])*current_price*0.5
-
-            
-
         elif request > 0:  # Buy
-            if self.positions[asset]<0:
-                qty=min(abs(self.positions[asset]),request)
-                if asset == "MERI":
-                    prec_price = self.market_data_MERI.iloc[self.current_step-1]['close']
-                elif asset == "TIS":
-                    prec_price = self.market_data_TIS.iloc[self.current_step-1]['close']
-                val=(prec_price-current_price)*qty
-                self.cash+=val
-                value=round(self.marginDeposit*qty/abs(self.positions[asset]))
-                self.cash+=value
-                self.marginDeposit-=value  
-                self.positions[asset]+=qty
-                request-=qty
             max_buy = int(self.cash // current_price)
             qty_buy = min(request, max_buy)
 
             self.positions[asset] += qty_buy
             self.cash -= qty_buy * current_price
-
-        if self.positions[asset]<0:
-            if asset == "MERI":
-                prec_price = self.market_data_MERI.iloc[self.current_step-1]['close']
-            elif asset == "TIS":
-                prec_price = self.market_data_TIS.iloc[self.current_step-1]['close']
-            val=(prec_price-current_price)*abs(self.positions[asset])
-            self.marginDeposit-=val*0.5
-            self.cash+=val*0.5
-            self.cash+=val
-            
-                
 
     def step(self, action):
         self.execute_action(action)
@@ -117,4 +91,3 @@ class TradingAgent():
         self.positions = {'MERI': 0, 'TIS': 0}
         self.current_step = 0
         return self.get_state()
-        
