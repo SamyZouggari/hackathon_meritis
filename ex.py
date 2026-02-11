@@ -53,6 +53,9 @@ def on_message(ws, message):
         for item in data['marketData']:
             if item['symbol'] == 'MERI':
                 print(f"MERI - Close: {item['close']}, Volume: {item['volume']}")
+            if item['symbol'] == 'TIS':
+                print(f"TIS - Close: {item['close']}, Volume: {item['volume']}")
+            
     
     elif data['type'] == 'FINISHED':
         score = data['score']
@@ -63,12 +66,7 @@ def on_message(ws, message):
 ws = websocket.WebSocketApp(f"{WS_URL}?code={TEAM_CODE}", on_message=on_message)
 threading.Thread(target=ws.run_forever).start()
 
-# Start Simulation
-requests.post(f"{BASE_URL}/api/simulation/start", headers=HEADERS)
-
-# Place Order
-order = achat("MERI",50)
-requests.post(f"{BASE_URL}/api/order", json=order, headers=HEADERS)
+getPreset()
 
 
 
