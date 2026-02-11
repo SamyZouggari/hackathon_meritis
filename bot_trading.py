@@ -28,28 +28,16 @@ class TradingAgent():
         return obs
 
     def execute_action(self, actions):
-        """action = [MERI, TIS] entre -1 et +1"""
-        # action = [-0.5, 0.8] signifie :
-        # - MERI : vendre 50% de la position
-        # - TIS : acheter pour 80% du cash disponible
-        request_MERI, request_TIS = actions
+        """action = [MERI, TIS]"""
+        # action = [nbMERI, nbTIS]
+        nb_MERI, nb_TIS = actions
+        nb_MERI = int(np.round(nb_MERI))
+        nb_TIS = int(np.round(nb_TIS))
 
-        assert(-1 <= request_MERI <= 1), "Action MERI doit être entre -1 et 1"
-        assert(-1 <= request_TIS <= 1), "Action TIS doit être entre -1 et 1"
+        self.trade(nb_MERI, "MERI")
+        self.trade(nb_TIS, "TIS")
 
-        cash_initial = self.cash
-        
-        total_buy_request = max(0, request_MERI) + max(0, request_TIS)
-    
-        if total_buy_request > 1.0:
-        # Réduire proportionnellement
-            request_MERI = request_MERI / total_buy_request
-            request_TIS = request_TIS / total_buy_request
-
-        self.trade(request_MERI, "MERI", cash_initial)
-        self.trade(request_TIS, "TIS", cash_initial)
-
-    def trade(self, request, asset, cash_initial):
+    def trade(self, request, asset):
 
         if asset == "MERI":
             current_price = self.market_data_MERI.iloc[self.current_step]['close']
@@ -57,14 +45,15 @@ class TradingAgent():
             current_price = self.market_data_TIS.iloc[self.current_step]['close']
         
         if request < 0:  # Sell
-            quantity_to_sell = int(-request * self.positions[asset])
-            self.positions[asset] -= quantity_to_sell
-            self.cash += quantity_to_sell * current_price
+            qty_sell = min(-request, self.positions[asset])  # Can't sell more than we have
+            self.positions[asset] -= qty_sell
+            self.cash += qty_sell * current_price
         elif request > 0:  # Buy
-            amount_to_spend = request * cash_initial
-            quantity_to_buy = int(amount_to_spend / current_price)
-            self.positions[asset] += quantity_to_buy
-            self.cash -= quantity_to_buy * current_price
+            max_buy = int(self.cash // current_price)
+            qty_buy = min(request, max_buy)
+
+            self.positions[asset] += qty_buy
+            self.cash -= qty_buy * current_price
 
     def step(self, action):
         self.execute_action(action)
